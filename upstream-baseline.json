@@ -1,0 +1,25 @@
+{
+  "upstreamRepository": "https://github.com/modelcontextprotocol/servers",
+  "upstreamPath": "src/sequentialthinking",
+  "commit": "7b1170d1da1e36bc9f553f51e76e64cbfd652b3e",
+  "commitDate": "2026-06-16T18:40:51-07:00",
+  "commitSubject": "feat(memory): expose knowledge graph as MCP Resource (#3323)",
+  "trackedFiles": [
+    "index.ts",
+    "lib.ts",
+    "README.md",
+    "package.json",
+    "__tests__/lib.test.ts"
+  ],
+  "syncPolicy": {
+    "mechanicalChanges": [
+      "description",
+      "schema",
+      "annotations",
+      "README"
+    ],
+    "manualReviewRequired": [
+      "lib.ts core logic"
+    ]
+  }
+}

@@ -65,7 +65,18 @@ http_headers = { "Authorization" = "Bearer <token>" }
 3. 不同 `Mcp-Session-Id` 的 `thoughtHistoryLength` 互不影响。
 4. RSS 应明显低于多实例 Node 方案。
 
+## 上游对标基线
+
+- 上游仓库：https://github.com/modelcontextprotocol/servers
+- 上游路径：`src/sequentialthinking`
+- 当前对标 commit：`7b1170d1da1e36bc9f553f51e76e64cbfd652b3e`
+- commit 日期：`2026-06-16T18:40:51-07:00`
+- commit 标题：`feat(memory): expose knowledge graph as MCP Resource (#3323)`
+- 机器可读基线：`upstream-baseline.json`
+- 限定同步文件：`index.ts`、`lib.ts`、`README.md`、`package.json`、`__tests__/lib.test.ts`
+- 同步规则：工具 `description`、schema、annotations、README 等机械内容可同步；`lib.ts` 核心逻辑变化必须先人工 review。
+
 ## 兼容边界
 
-- 成功路径按本地原版 `/tmp/mcp-sequentialthinking-proxy.yKYh5l/servers/src/sequentialthinking` 对齐，包括长 description、布尔字符串大小写兼容、分支插入顺序和默认 thought 日志。
+- 成功路径按上游对标基线的 `src/sequentialthinking` 对齐，包括长 description、布尔字符串大小写兼容、分支插入顺序和默认 thought 日志。
 - 失败路径不是字节级等价：原版通过 MCP SDK + Zod 产生校验错误；Go 版用手写 JSON-RPC 错误返回相同类别的失败。
