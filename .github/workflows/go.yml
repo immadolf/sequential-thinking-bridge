@@ -3,24 +3,70 @@ name: Go
 on:
   push:
     branches: ["main"]
+    tags: ["v*"]
   pull_request:
     branches: ["main"]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
 
       - name: Test
         run: go test -count=1 ./...
 
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: arm64
+            artifact: sequential-thinking-bridge-darwin-arm64
+          - goos: darwin
+            goarch: amd64
+            artifact: sequential-thinking-bridge-darwin-amd64
+          - goos: linux
+            goarch: arm64
+            artifact: sequential-thinking-bridge-linux-arm64
+          - goos: linux
+            goarch: amd64
+            artifact: sequential-thinking-bridge-linux-amd64
+          - goos: windows
+            goarch: amd64
+            artifact: sequential-thinking-bridge-windows-amd64.exe
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
       - name: Build
-        run: go build -v ./cmd/sequential-thinking-bridge
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags="-s -w" -o "dist/${{ matrix.artifact }}" ./cmd/sequential-thinking-bridge
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
