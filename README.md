@@ -18,6 +18,36 @@ go test ./...
 go build -o sequential-thinking-bridge ./cmd/sequential-thinking-bridge
 ```
 
+## Release 下载
+
+发布页：https://github.com/immadolf/sequential-thinking-bridge/releases
+
+当前 Release 会提供以下平台产物：
+
+- `sequential-thinking-bridge-darwin-arm64`：macOS Apple Silicon
+- `sequential-thinking-bridge-darwin-amd64`：macOS Intel
+- `sequential-thinking-bridge-linux-arm64`
+- `sequential-thinking-bridge-linux-amd64`
+- `sequential-thinking-bridge-windows-amd64.exe`
+
+macOS Apple Silicon 示例：
+
+```bash
+mkdir -p ~/opt/sequential-thinking-bridge
+curl -L \
+  -o ~/opt/sequential-thinking-bridge/sequential-thinking-bridge \
+  https://github.com/immadolf/sequential-thinking-bridge/releases/download/v0.1.0/sequential-thinking-bridge-darwin-arm64
+chmod +x ~/opt/sequential-thinking-bridge/sequential-thinking-bridge
+```
+
+macOS Intel 用户把下载文件名替换为 `sequential-thinking-bridge-darwin-amd64`。
+
+如果通过浏览器下载后被 macOS quarantine 拦截，可以执行：
+
+```bash
+xattr -d com.apple.quarantine ~/opt/sequential-thinking-bridge/sequential-thinking-bridge
+```
+
 ## 运行
 
 ```bash
@@ -37,6 +67,86 @@ DISABLE_THOUGHT_LOGGING=true ./sequential-thinking-bridge serve
 
 ```bash
 ./sequential-thinking-bridge serve --token '<token>'
+```
+
+## macOS LaunchAgent 启动
+
+将二进制放到固定路径：
+
+```bash
+mkdir -p ~/opt/sequential-thinking-bridge
+cp ./sequential-thinking-bridge ~/opt/sequential-thinking-bridge/sequential-thinking-bridge
+chmod +x ~/opt/sequential-thinking-bridge/sequential-thinking-bridge
+```
+
+创建 `~/Library/LaunchAgents/com.repairman.sequential-thinking-bridge.plist`：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.repairman.sequential-thinking-bridge</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/repairman/opt/sequential-thinking-bridge/sequential-thinking-bridge</string>
+    <string>serve</string>
+    <string>--listen</string>
+    <string>127.0.0.1:38989</string>
+    <string>--path</string>
+    <string>/mcp</string>
+    <string>--session-ttl</string>
+    <string>2h</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DISABLE_THOUGHT_LOGGING</key>
+    <string>true</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/repairman/opt/sequential-thinking-bridge/var/stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/repairman/opt/sequential-thinking-bridge/var/stderr.log</string>
+</dict>
+</plist>
+```
+
+加载并启动：
+
+```bash
+mkdir -p ~/opt/sequential-thinking-bridge/var
+launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.repairman.sequential-thinking-bridge.plist
+launchctl enable "gui/$(id -u)/com.repairman.sequential-thinking-bridge"
+launchctl kickstart -k "gui/$(id -u)/com.repairman.sequential-thinking-bridge"
+```
+
+查看状态：
+
+```bash
+launchctl print "gui/$(id -u)/com.repairman.sequential-thinking-bridge"
+curl -fsS http://127.0.0.1:38989/healthz
+```
+
+重启服务：
+
+```bash
+launchctl kickstart -k "gui/$(id -u)/com.repairman.sequential-thinking-bridge"
+```
+
+卸载服务：
+
+```bash
+launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.repairman.sequential-thinking-bridge.plist
 ```
 
 ## Codex MCP 配置示例
