@@ -19,21 +19,19 @@ type Session struct {
 
 // Store keeps session-scoped SequentialThinkingServer instances.
 type Store struct {
-	mu           sync.Mutex
-	ttl          time.Duration
-	allowDefault bool
-	sessions     map[string]*Session
+	mu       sync.Mutex
+	ttl      time.Duration
+	sessions map[string]*Session
 }
 
 // NewStore creates a session store with idle TTL cleanup.
-func NewStore(ttl time.Duration, allowDefault bool) *Store {
+func NewStore(ttl time.Duration) *Store {
 	if ttl <= 0 {
 		ttl = 2 * time.Hour
 	}
 	return &Store{
-		ttl:          ttl,
-		allowDefault: allowDefault,
-		sessions:     make(map[string]*Session),
+		ttl:      ttl,
+		sessions: make(map[string]*Session),
 	}
 }
 
@@ -46,15 +44,24 @@ func NewSessionID() (string, error) {
 	return hex.EncodeToString(buf[:]), nil
 }
 
-// Resolve gets a session or returns an error when a required session id is missing.
-func (s *Store) Resolve(id string, now time.Time) (*Session, error) {
+// ResolveHandle creates state for a blank handle or resolves an existing server-minted handle.
+func (s *Store) ResolveHandle(id string, now time.Time) (*Session, bool, error) {
 	if id == "" {
-		if !s.allowDefault {
-			return nil, fmt.Errorf("missing Mcp-Session-Id header")
+		generated, err := NewSessionID()
+		if err != nil {
+			return nil, false, err
 		}
-		id = "default"
+		return s.Get(generated, now), true, nil
 	}
-	return s.Get(id, now), nil
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	session, ok := s.sessions[id]
+	if !ok {
+		return nil, false, fmt.Errorf("unknown or expired thoughtHandle")
+	}
+	session.LastSeen = now
+	return session, false, nil
 }
 
 // Get returns an existing session or creates a new one.

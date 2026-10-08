@@ -50,8 +50,7 @@ func serve(args []string) error {
 	listen := fs.String("listen", "127.0.0.1:38989", "local listen address")
 	path := fs.String("path", "/mcp", "MCP HTTP path")
 	token := fs.String("token", "", "optional Bearer token")
-	ttl := fs.Duration("session-ttl", 2*time.Hour, "idle session TTL")
-	allowDefaultSession := fs.Bool("allow-default-session", false, "allow tools/call without Mcp-Session-Id")
+	ttl := fs.Duration("session-ttl", 2*time.Hour, "idle thought handle TTL")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -59,7 +58,7 @@ func serve(args []string) error {
 		return err
 	}
 
-	store := session.NewStore(*ttl, *allowDefaultSession)
+	store := session.NewStore(*ttl)
 	handler := server.New(server.Config{Store: store, Token: *token})
 
 	mux := http.NewServeMux()

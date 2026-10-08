@@ -6,8 +6,10 @@ Go 原生的本地常驻 MCP HTTP 服务，用来替代 `npx -y @modelcontextpro
 
 - 只实现 `sequentialthinking` 一个 MCP tool。
 - 监听本机地址，默认 `127.0.0.1:38989`。
-- 用 `Mcp-Session-Id` 做会话隔离，每个 session 拥有独立 `thoughtHistory` 和 `branches`。
-- 用 idle TTL 清理长期不用的 session，默认 `2h`。
+- 实现 MCP `2026-07-28` 版 Streamable HTTP：无 `initialize` 握手、无协议级 session。
+- 保留 MCP 旧版握手路径；客户端请求的旧协议版本不做精确匹配，统一协商到服务端支持的 `2025-06-18`。
+- 在 `2026-07-28` 路径中，首次 `tools/call` 返回服务端生成的 `thoughtHandle`；后续调用显式传回该参数以延续同一组 `thoughtHistory` 和 `branches`。
+- 用 idle TTL 清理长期不用的 `thoughtHandle`，默认 `2h`。
 - 默认像原版一样把格式化 thought 写到 `stderr`；设置 `DISABLE_THOUGHT_LOGGING=true` 后关闭。
 - 不访问外部网络，不写业务数据，不改变 Codex 全局配置。
 
@@ -170,23 +172,26 @@ http_headers = { "Authorization" = "Bearer <token>" }
 
 ## 验证重点
 
-1. `initialize` 返回 `Mcp-Session-Id`。
-2. 后续 `tools/call` 带同一个 `Mcp-Session-Id` 时，`thoughtHistoryLength` 连续增长。
-3. 不同 `Mcp-Session-Id` 的 `thoughtHistoryLength` 互不影响。
-4. RSS 应明显低于多实例 Node 方案。
+1. `server/discover` 返回 `supportedVersions: ["2026-07-28", "2025-06-18"]`。
+2. 每个请求都携带 `_meta`、`MCP-Protocol-Version`、`Mcp-Method`；`tools/call` 额外携带 `Mcp-Name`。
+3. 首次 `tools/call` 返回 `thoughtHandle`，后续显式传回同一 handle 时 `thoughtHistoryLength` 连续增长。
+4. 在 `2026-07-28` 路径中，省略 `thoughtHandle` 会创建新的隔离思考序列，响应不返回 `Mcp-Session-Id`。
+5. RSS 应明显低于多实例 Node 方案。
 
 ## 上游对标基线
 
 - 上游仓库：https://github.com/modelcontextprotocol/servers
 - 上游路径：`src/sequentialthinking`
-- 当前对标 commit：`7b1170d1da1e36bc9f553f51e76e64cbfd652b3e`
-- commit 日期：`2026-06-16T18:40:51-07:00`
-- commit 标题：`feat(memory): expose knowledge graph as MCP Resource (#3323)`
+- 当前对标 commit：`76d64c822f5125032f89eb71dbdb94e42b434821`
+- commit 日期：`2026-07-29T16:09:46-07:00`
+- commit 标题：`Merge pull request #4527 from Joosboy/docs-everything-4096-references-formatting`
 - 机器可读基线：`upstream-baseline.json`
 - 限定同步文件：`index.ts`、`lib.ts`、`README.md`、`package.json`、`__tests__/lib.test.ts`
 - 同步规则：工具 `description`、schema、annotations、README 等机械内容可同步；`lib.ts` 核心逻辑变化必须先人工 review。
 
 ## 兼容边界
 
+- 首选 MCP `2026-07-28` 现代请求模型；旧版 `initialize` 请求统一返回 `2025-06-18`，兼容 Pi 等发送较新旧协议版本的客户端。
 - 成功路径按上游对标基线的 `src/sequentialthinking` 对齐，包括长 description、布尔字符串大小写兼容、分支插入顺序和默认 thought 日志。
+- 因新协议禁止隐式跨请求状态，Go 版额外使用普通工具参数 `thoughtHandle` 保存思考链上下文。
 - 失败路径不是字节级等价：原版通过 MCP SDK + Zod 产生校验错误；Go 版用手写 JSON-RPC 错误返回相同类别的失败。

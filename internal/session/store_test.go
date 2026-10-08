@@ -8,7 +8,7 @@ import (
 )
 
 func TestStoreReturnsIsolatedStatesBySessionID(t *testing.T) {
-	store := NewStore(time.Hour, true)
+	store := NewStore(time.Hour)
 	now := time.Unix(100, 0)
 
 	a := store.Get("a", now)
@@ -25,7 +25,7 @@ func TestStoreReturnsIsolatedStatesBySessionID(t *testing.T) {
 }
 
 func TestStoreCleanupExpiresIdleSessions(t *testing.T) {
-	store := NewStore(10*time.Second, true)
+	store := NewStore(10 * time.Second)
 	store.Get("stale", time.Unix(100, 0))
 	store.Get("fresh", time.Unix(111, 0))
 
@@ -42,17 +42,26 @@ func TestStoreCleanupExpiresIdleSessions(t *testing.T) {
 	}
 }
 
-func TestStoreRejectsBlankSessionWhenDefaultDisabled(t *testing.T) {
-	store := NewStore(time.Hour, false)
+func TestStoreResolveHandleMintsAndRequiresKnownHandles(t *testing.T) {
+	store := NewStore(time.Hour)
+	now := time.Unix(100, 0)
 
-	if _, err := store.Resolve("", time.Unix(100, 0)); err == nil {
-		t.Fatal("Resolve returned nil error, want missing session error")
+	created, minted, err := store.ResolveHandle("", now)
+	if err != nil || !minted || created.ID == "" {
+		t.Fatalf("ResolveHandle create = (%#v, %t, %v)", created, minted, err)
+	}
+	resolved, minted, err := store.ResolveHandle(created.ID, now.Add(time.Second))
+	if err != nil || minted || resolved != created {
+		t.Fatalf("ResolveHandle existing = (%#v, %t, %v)", resolved, minted, err)
+	}
+	if _, _, err := store.ResolveHandle("not-server-minted", now); err == nil {
+		t.Fatal("ResolveHandle accepted an unknown handle")
 	}
 }
 
 func TestStoreUsesEnvDefaultForThoughtLogging(t *testing.T) {
 	t.Setenv("DISABLE_THOUGHT_LOGGING", "")
-	store := NewStore(time.Hour, false)
+	store := NewStore(time.Hour)
 	session := store.Get("logging", time.Unix(100, 0))
 
 	output := captureStderr(t, func() {
@@ -74,7 +83,7 @@ func TestStoreUsesEnvDefaultForThoughtLogging(t *testing.T) {
 
 func TestStoreHonorsDisableThoughtLoggingEnv(t *testing.T) {
 	t.Setenv("DISABLE_THOUGHT_LOGGING", "true")
-	store := NewStore(time.Hour, false)
+	store := NewStore(time.Hour)
 	session := store.Get("quiet", time.Unix(100, 0))
 
 	output := captureStderr(t, func() {

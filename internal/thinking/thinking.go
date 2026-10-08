@@ -25,8 +25,9 @@ type ThoughtData struct {
 	NextThoughtNeeded bool   `json:"nextThoughtNeeded"`
 }
 
-// Result is the structured response returned by the official server.
+// Result is the structured response returned by the tool.
 type Result struct {
+	ThoughtHandle        string   `json:"thoughtHandle,omitempty"`
 	ThoughtNumber        int      `json:"thoughtNumber"`
 	TotalThoughts        int      `json:"totalThoughts"`
 	NextThoughtNeeded    bool     `json:"nextThoughtNeeded"`
